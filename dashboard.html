@@ -298,7 +298,7 @@
     <form id="loginForm">
       <div class="field">
         <label for="studentIdInput">รหัสนักศึกษา</label>
-        <input id="studentIdInput" type="text" inputmode="numeric" placeholder="เช่น 467601241001" autocomplete="off" required>
+        <input id="studentIdInput" type="text" inputmode="numeric" placeholder="กรอกรหัสนักศึกษา" autocomplete="off" required>
       </div>
       <div class="field">
         <label for="pinInput">รหัส PIN (4 หลัก)</label>
@@ -310,8 +310,8 @@
 
     <div class="demo-banner" id="demoBanner">
       ⚠️ ยังไม่ได้เชื่อมต่อ Google Sheets — กำลังแสดงข้อมูลตัวอย่าง (Demo Mode)<br>
-      ลองรหัส <b class="mono">469618241001</b> / PIN <b class="mono">1001</b>
-      หรือ <b class="mono">467601241001</b> / PIN <b class="mono">1001</b>
+      ลองรหัส <b class="mono">500000000001</b> / PIN <b class="mono">0001</b>
+      หรือ <b class="mono">500000000002</b> / PIN <b class="mono">0002</b>
     </div>
 
     <div class="login-footnote">
@@ -364,10 +364,10 @@
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxZJqSXGOmL2-iF1Hlu99l9etLLIs8SOaeJyrn23BCej2jyzUnGVWntKr2L_4pa4PND/exec";
 
 /* ---------- Demo data (ใช้เมื่อยังไม่ได้ตั้งค่า WEB_APP_URL) ---------- */
-/* โครงสร้างตรงกับ JSON จริงที่ Code.gs ส่งกลับมา (อิงจากไฟล์ Excel ระบบเช็คชื่อของอาจารย์) */
+/* ข้อมูลสมมติล้วนๆ (ไม่ใช่นักศึกษาจริง) ใช้แค่โชว์รูปแบบหน้าตาของระบบ */
 const DEMO_DB = {
-  "469618241001|1001": {
-    success:true, studentId:"469618241001", studentName:"นางสาวกฤชพร พิบูลสุข",
+  "500000000001|0001": {
+    success:true, studentId:"500000000001", studentName:"นางสาวตัวอย่าง หนึ่ง",
     courses:[
       { courseId:"PRON", code:"60-03-1509", nameTH:"การออกเสียงภาษาอังกฤษ", nameEN:"English Pronunciation", groupName:"AIE46941N",
         attendance:{
@@ -388,8 +388,8 @@ const DEMO_DB = {
       }
     ]
   },
-  "467601241001|1001": {
-    success:true, studentId:"467601241001", studentName:"นางสาวกชกร จันนิมิต",
+  "500000000002|0002": {
+    success:true, studentId:"500000000002", studentName:"นายตัวอย่าง สอง",
     courses:[
       { courseId:"NEWS", code:"603-35-02", nameTH:"ภาษาอังกฤษจากข่าว", nameEN:"English through News", groupName:"EC46741N",
         attendance:{
@@ -479,7 +479,7 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
 async function fetchStudent(studentId, pin){
   if (isDemoMode){
     await new Promise(r => setTimeout(r, 450));
-    return DEMO_DB[studentId + '|' + pin] || { success:false, message:'ไม่พบรหัสนี้ในข้อมูลตัวอย่าง (โหมดสาธิต) — ลอง 469618241001/1001 หรือ 467601241001/1001' };
+    return DEMO_DB[studentId + '|' + pin] || { success:false, message:'ไม่พบรหัสนี้ในข้อมูลตัวอย่าง (โหมดสาธิต) — ลอง 500000000001/0001 หรือ 500000000002/0002' };
   }
   const url = `${WEB_APP_URL}?action=login&studentId=${encodeURIComponent(studentId)}&pin=${encodeURIComponent(pin)}`;
   const res = await fetch(url);
