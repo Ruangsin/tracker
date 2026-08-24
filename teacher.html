@@ -243,10 +243,13 @@
   td.idx{color:var(--text-dim); font-family:'JetBrains Mono'; font-size:12px;}
   td.sid{font-family:'JetBrains Mono'; font-size:12px; color:var(--text-muted);}
   td.name{font-weight:500; color:var(--text-primary); white-space:nowrap;}
+  th.num-col, td.num-col{text-align:center; font-size:13px; font-weight:700; width:44px;}
 
-  .pct-cell{display:flex; align-items:center; gap:10px; min-width:130px;}
-  .pct-cell .num{font-family:'JetBrains Mono'; font-size:12.5px; font-weight:600; width:42px; flex-shrink:0;}
-  .mini-bar-track{flex:1; height:7px; border-radius:99px; background:rgba(255,255,255,0.08); overflow:hidden;}
+  .pct-cell{display:flex; flex-direction:column; gap:5px; min-width:150px;}
+  .pct-top{display:flex; align-items:baseline; justify-content:space-between; gap:8px;}
+  .pct-cell .frac{font-family:'JetBrains Mono'; font-size:11.5px; color:var(--text-dim); font-weight:500;}
+  .pct-cell .num{font-family:'JetBrains Mono'; font-size:13px; font-weight:700; color:var(--text-primary); flex-shrink:0;}
+  .mini-bar-track{height:7px; border-radius:99px; background:rgba(255,255,255,0.08); overflow:hidden;}
   .mini-bar-fill{height:100%; border-radius:99px;}
   .mini-bar-fill.att{background:linear-gradient(90deg,var(--neon-cyan),var(--neon-violet)); box-shadow:0 0 8px rgba(168,85,247,0.5);}
   .mini-bar-fill.score{background:linear-gradient(90deg,var(--neon-violet),var(--neon-pink)); box-shadow:0 0 8px rgba(255,47,208,0.5);}
@@ -464,12 +467,15 @@ function getStatus(s){
   return { label:'ปกติ', type:'ok' };
 }
 
-function pctBar(pct, kind){
+function pctBar(pct, kind, fracLabel){
   const display = (pct===null || pct===undefined) ? '—' : pct+'%';
   const width = pct===null ? 0 : pct;
   return `
     <div class="pct-cell">
-      <span class="num mono">${display}</span>
+      <div class="pct-top">
+        ${fracLabel ? `<span class="frac mono">${fracLabel}</span>` : ''}
+        <span class="num mono">${display}</span>
+      </div>
       <div class="mini-bar-track"><div class="mini-bar-fill ${kind}" style="width:${width}%;"></div></div>
     </div>`;
 }
@@ -624,6 +630,10 @@ function buildCoursePanel(course){
             <th data-key="idx">#</th>
             <th data-key="studentId">รหัสนักศึกษา</th>
             <th data-key="name">ชื่อ-นามสกุล</th>
+            <th data-key="present" class="num-col">มา</th>
+            <th data-key="late" class="num-col">สาย</th>
+            <th data-key="absent" class="num-col">ขาด</th>
+            <th data-key="leave" class="num-col">ลา</th>
             <th data-key="attendancePct">การเข้าเรียน <span class="arrow">▾</span></th>
             <th data-key="scorePct">คะแนนเก็บ <span class="arrow">▾</span></th>
             <th data-key="status">สถานะ</th>
@@ -684,7 +694,7 @@ function renderTable(course){
 
   if (rows.length === 0){
     const msg = riskOnly ? 'ไม่มีนักศึกษาที่ควรติดตามในวิชานี้ 🎉' : 'ไม่พบนักศึกษาที่ตรงกับคำค้นหา';
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">${msg}</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state">${msg}</div></td></tr>`;
     return;
   }
 
@@ -696,8 +706,12 @@ function renderTable(course){
         <td class="idx">${i+1}</td>
         <td class="sid mono">${s.studentId}</td>
         <td class="name">${s.name}</td>
-        <td>${pctBar(s.attendancePct, 'att')}</td>
-        <td>${pctBar(s.scorePct, 'score')}</td>
+        <td class="num-col mono" style="color:var(--success);">${s.present}</td>
+        <td class="num-col mono" style="color:var(--warning);">${s.late}</td>
+        <td class="num-col mono" style="color:var(--danger);">${s.absent}</td>
+        <td class="num-col mono" style="color:var(--neon-cyan);">${s.leave}</td>
+        <td>${pctBar(s.attendancePct, 'att', `${s.present + s.late}/${s.attendanceTotal} ครั้ง`)}</td>
+        <td>${pctBar(s.scorePct, 'score', s.scoreMax > 0 ? `${s.scoreObtained}/${s.scoreMax} คะแนน` : null)}</td>
         <td><span class="badge ${status.type}">${status.label}</span></td>
       </tr>`;
   }).join('');
