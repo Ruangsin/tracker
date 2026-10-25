@@ -237,6 +237,31 @@
   thead th .arrow{font-size:10px; margin-left:3px; opacity:.5;}
   tbody tr{border-bottom:1px solid rgba(168,85,247,0.1); transition:background .15s;}
   tbody tr:hover{background:rgba(168,85,247,0.1);}
+  tbody tr.main-row{cursor:pointer;}
+  .vbtn{margin-top:12px; padding:8px 14px; border-radius:10px; border:1px solid rgba(34,211,238,.5); background:rgba(34,211,238,.1); color:var(--neon-cyan); font-weight:700; font-size:13px; cursor:pointer; font-family:inherit;}
+  #viewModal{position:fixed; inset:0; background:rgba(5,0,15,.75); display:none; z-index:100; align-items:center; justify-content:center; padding:16px;}
+  #viewModal.open{display:flex;}
+  #viewModal .box{width:min(1000px,100%); height:90vh; background:#0d0720; border:1px solid rgba(168,85,247,.4); border-radius:16px; display:flex; flex-direction:column; overflow:hidden;}
+  #viewModal .bar{display:flex; justify-content:space-between; align-items:center; padding:10px 16px; font-size:13px; font-weight:700;}
+  #viewModal .bar button{background:none; border:1px solid rgba(255,255,255,.3); color:inherit; border-radius:8px; padding:4px 12px; cursor:pointer; font-family:inherit;}
+  #viewBody{flex:1; overflow:auto; padding:6px 20px 24px;}
+  .vtabs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;}
+  .vtab{padding:6px 14px; border-radius:20px; border:1px solid rgba(168,85,247,.5); cursor:pointer; font-size:13px;}
+  .vtab.on{background:linear-gradient(135deg,#a855f7,#ec4899); color:#fff; border-color:transparent;}
+  .vcards{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;}
+  @media(max-width:700px){.vcards{grid-template-columns:1fr;}}
+  .vcard{border:1px solid rgba(168,85,247,.3); border-radius:14px; padding:14px 16px; background:rgba(168,85,247,.07);}
+  .vbig{font-size:30px; font-weight:800;} .vsub{font-size:12px; opacity:.7;}
+  .vtags{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+  .vtag{font-size:12px; padding:3px 10px; border-radius:12px; border:1px solid rgba(255,255,255,.25);}
+  .vtag.มา{color:var(--success);} .vtag.สาย{color:var(--warning);} .vtag.ขาด{color:var(--danger);} .vtag.ลา{color:var(--neon-cyan);}
+  tr.detail-row td{padding:14px 20px 18px 56px; background:rgba(168,85,247,0.06);}
+  .dgrid{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+  @media(max-width:700px){.dgrid{grid-template-columns:1fr;} tr.detail-row td{padding-left:16px;}}
+  .dtitle{font-size:12px; font-weight:700; margin-bottom:8px;}
+  .dtitle.ok{color:var(--success);} .dtitle.no{color:var(--danger);}
+  .dline{display:flex; justify-content:space-between; gap:12px; padding:5px 0; border-bottom:1px solid rgba(168,85,247,0.12); font-size:13px;}
+  .dnone{font-size:12px; opacity:.6;}
   tbody tr.risk-row{background:rgba(255,61,110,0.08); box-shadow:inset 3px 0 0 var(--danger);}
   tbody tr.risk-row:hover{background:rgba(255,61,110,0.13);}
   tbody td{padding:13px 16px; font-size:13px; vertical-align:middle;}
@@ -345,6 +370,7 @@
   </div>
 </div>
 
+<div id="viewModal"><div class="box"><div class="bar"><span id="viewTitle"></span><button onclick="closeStudentView()">ปิด ✕</button></div><div id="viewBody"></div></div></div>
 <script>
 /* ======================================================
    CONFIG — วางลิงก์ Web App ของ Google Apps Script ตรงนี้
@@ -411,6 +437,7 @@ const demoBanner  = document.getElementById('demoBanner');
 
 if (isDemoMode) demoBanner.style.display = 'block';
 
+let teacherPin = '';
 loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const pin = document.getElementById('pinInput').value.trim();
@@ -421,6 +448,7 @@ loginForm.addEventListener('submit', async (e) => {
   loginMsg.textContent = '';
 
   try{
+    teacherPin = pin;
     const data = await fetchTeacher(pin);
     if (!data.success){
       loginMsg.textContent = data.message || 'เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจสอบ PIN อีกครั้ง';
@@ -702,8 +730,9 @@ function renderTable(course){
   tbody.innerHTML = rows.map((s, i) => {
     const status = getStatus(s);
     const rowClass = status.type === 'risk' ? ' class="risk-row"' : '';
+    const cls = (status.type === 'risk' ? 'risk-row ' : '') + 'main-row';
     return `
-      <tr${rowClass}>
+      <tr class="${cls}" data-sid="${s.studentId}">
         <td class="idx">${i+1}</td>
         <td class="sid mono">${s.studentId}</td>
         <td class="name">${s.name}</td>
@@ -713,10 +742,62 @@ function renderTable(course){
         <td class="num-col mono" style="color:var(--neon-cyan);">${s.leave}</td>
         <td>${pctBar(s.attendancePct, 'att', `${s.present + s.late}/${s.attendanceTotal} ครั้ง`)}</td>
         <td>${pctBar(s.scorePct, 'score', s.scoreMax > 0 ? `${s.scoreObtained}/${s.scoreMax} คะแนน` : null)}</td>
-        <td><span class="badge ${status.type}">${status.label}</span></td>
+        <td><span class="badge ${status.type}">${status.label}${(s.missing||[]).length ? ' · ค้าง '+s.missing.length : ''}</span></td>
       </tr>`;
   }).join('');
+  tbody.querySelectorAll('tr.main-row').forEach(tr => tr.addEventListener('click', () => toggleDetail(course, tr)));
 }
+
+function toggleDetail(course, tr){
+  const next = tr.nextElementSibling;
+  if (next && next.classList.contains('detail-row')){ next.remove(); return; }
+  const s = course.students.find(x => x.studentId === tr.dataset.sid);
+  const esc = t => String(t).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const sub = s.submitted || [], mis = s.missing || [];
+  const d = document.createElement('tr');
+  d.className = 'detail-row';
+  if (!s.submitted && !s.missing){ d.innerHTML = '<td colspan="10"><div class="dnone">โหมดตัวอย่าง: ไม่มีข้อมูลรายชิ้นงาน (จะแสดงเมื่อเชื่อม Apps Script)</div></td>'; tr.after(d); return; }
+  d.innerHTML = `<td colspan="10"><div class="dgrid">
+    <div><div class="dtitle ok">ส่งแล้ว (${sub.length})</div>${sub.length ? sub.map(x => `<div class="dline"><span>${esc(x.a)}</span><span class="mono">${x.s}/${x.m}</span></div>`).join('') : '<div class="dnone">ยังไม่มีงานที่ส่ง</div>'}</div>
+    <div><div class="dtitle no">ยังไม่ส่ง (${mis.length})</div>${mis.length ? mis.map(x => `<div class="dline"><span>${esc(x.a)}</span><span class="mono">เต็ม ${x.m}</span></div>`).join('') : '<div class="dnone">ส่งครบทุกชิ้น 🎉</div>'}</div>
+  </div><button class="vbtn" data-sid="${s.studentId}" data-name="${esc(s.name)}">👁 ดูมุมมองของนักศึกษา</button></td>`;
+  tr.after(d);
+  d.querySelector('.vbtn').addEventListener('click', e => { e.stopPropagation(); openStudentView(e.currentTarget.dataset.sid, e.currentTarget.dataset.name); });
+}
+
+async function openStudentView(sid, name){
+  const m = document.getElementById('viewModal'), body = document.getElementById('viewBody');
+  document.getElementById('viewTitle').textContent = 'มุมมองนักศึกษา: ' + name + ' (' + sid + ')';
+  body.innerHTML = '<div class="dnone">กำลังโหลด...</div>';
+  m.classList.add('open');
+  try{
+    let data;
+    if (isDemoMode) data = { success:false, message:'โหมดตัวอย่าง: ไม่มีข้อมูลมุมมองนักศึกษา (จะแสดงเมื่อเชื่อม Apps Script)' };
+    else data = await (await fetch(`${WEB_APP_URL}?action=student&studentId=${encodeURIComponent(sid)}&teacherPin=${encodeURIComponent(teacherPin)}`)).json();
+    if (!data.success){ body.innerHTML = `<div class="dnone">${data.message || 'ไม่พบข้อมูล'}</div>`; return; }
+    renderStudentView(data, body);
+  }catch(err){ body.innerHTML = '<div class="dnone">เชื่อมต่อไม่สำเร็จ</div>'; }
+}
+function renderStudentView(data, body){
+  const esc = t => String(t == null ? '' : t).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const panels = data.courses.map((c, i) => {
+    const sc = c.scores, at = c.attendance;
+    return `<div class="vpanel" data-i="${i}" style="display:${i?'none':'block'}">
+      <div class="vcards">
+        <div class="vcard"><div class="vsub">คะแนนเก็บ</div><div class="vbig">${sc.pct==null?'—':sc.pct+'%'}</div><div class="vsub">${sc.totalObtained} / ${sc.totalMax} คะแนน</div></div>
+        <div class="vcard"><div class="vsub">การเข้าเรียน</div><div class="vbig">${at.pct==null?'—':at.pct+'%'}</div><div class="vsub">มา ${at.present} · สาย ${at.late} · ขาด ${at.absent} · ลา ${at.leave} (รวม ${at.totalSessions} ครั้ง)</div></div>
+      </div>
+      <div class="vcard" style="margin-bottom:14px"><div class="dtitle">รายละเอียดคะแนนเก็บ</div>${sc.items.length ? sc.items.map(x => `<div class="dline"><span>${esc(x.assignment)}</span><span class="mono">${x.score} / ${x.maxScore}</span></div>`).join('') : '<div class="dnone">ยังไม่มีคะแนน</div>'}</div>
+      <div class="vcard"><div class="dtitle">รายละเอียดการเข้าเรียน</div><div class="vtags">${at.sessions.length ? at.sessions.map(x => `<span class="vtag ${esc(x.status)}">${esc(x.date)} · ${esc(x.status)}</span>`).join('') : '<span class="dnone">ยังไม่มีการเปิดเช็คชื่อ</span>'}</div></div>
+    </div>`;
+  }).join('');
+  body.innerHTML = `<div class="vtabs">${data.courses.map((c,i)=>`<span class="vtab${i?'':' on'}" data-i="${i}">${esc(c.nameEN)}</span>`).join('')}</div>${panels}`;
+  body.querySelectorAll('.vtab').forEach(t => t.addEventListener('click', () => {
+    body.querySelectorAll('.vtab').forEach(x => x.classList.toggle('on', x === t));
+    body.querySelectorAll('.vpanel').forEach(p => p.style.display = p.dataset.i === t.dataset.i ? 'block' : 'none');
+  }));
+}
+function closeStudentView(){ document.getElementById('viewModal').classList.remove('open');  }
 
 function exportCsv(course){
   const header = ['รหัสนักศึกษา','ชื่อ-นามสกุล','การเข้าเรียน (%)','จำนวนครั้งที่เรียน','มา','สาย','ขาด','ลา','คะแนนเก็บ (%)','ได้คะแนน','คะแนนเต็ม','สถานะ'];
